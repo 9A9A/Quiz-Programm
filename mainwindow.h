@@ -1,6 +1,10 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-
+#define CRYPTOPP_DEFAULT_NO_DLL
+#include <Crypto562/dll.h>
+#ifdef CRYPTOPP_WIN32_AVAILABLE
+#include <windows.h>
+#endif
 #include <QMainWindow>
 #include <vector>
 namespace Ui {
@@ -54,6 +58,7 @@ public:
     void    add(const QuizEntry &);
     int     getSize();
     QuizEntry &operator [](int);
+    void    ShuffleDatabase();
 private:
     int     m_current;
     std::vector<QuizEntry> m_database;
@@ -95,6 +100,10 @@ public:
     void    ReadDatabase();
     void    WriteDatabase();
     int     GetSize();
+    QString    Encrypt(QString);
+    QString    Encrypt(int );
+    QString DecryptToStr(QString &);
+    int     DecryptToInt(QString &);
     void    SetFilename(QString);
     QString GetFilename();
     AccountInstance &operator [](int);
@@ -117,31 +126,17 @@ public:
     QuizDatabase m_data;
 private slots:
     void on_pushButton_pressed();
-
     void on_pushButton_2_pressed();
-
     void on_radioButton_toggled(bool checked);
-
     void on_radioButton_2_toggled(bool checked);
-
     void on_radioButton_3_toggled(bool checked);
-
     void on_radioButton_4_toggled(bool checked);
-
-
     void on_lineEdit_textEdited(const QString &arg1);
-
     void on_lineEdit_2_textEdited(const QString &arg1);
-
     void on_lineEdit_3_textEdited(const QString &arg1);
-
     void on_pushButton_4_pressed();
-
     void on_pushButton_4_clicked();
-
-
     void on_pushButton_3_pressed();
-
 private:
     Ui::MainWindow *ui;
 };

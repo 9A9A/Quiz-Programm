@@ -3,15 +3,35 @@
 #include <QTextStream>
 #include <QFile>
 #include <QDateTime>
+#include <QString>
 #include <QStringList>
 #include <QTime>
-
+#include <string>
+using std::string;
+#include <algorithm>
+#include <Crypto562/osrng.h>
+using CryptoPP::AutoSeededRandomPool;
+#include <Crypto562/cryptlib.h>
+using CryptoPP::Exception;
+#include <Crypto562/hex.h>
+using CryptoPP::HexEncoder;
+using CryptoPP::HexDecoder;
+#include <Crypto562/filters.h>
+using CryptoPP::StringSink;
+using CryptoPP::StringSource;
+using CryptoPP::StreamTransformationFilter;
+#include <Crypto562/aes.h>
+using CryptoPP::AES;
+#include <Crypto562/modes.h>
+using CryptoPP::OFB_Mode;
+#define EncryptionKey "U82HuXLNzbX3f6r";
+#define EncryptionKey_2 "epDKqfVtYXhdXgb";
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    instance.SetFilename("c://database.bin");
+    instance.SetFilename("database.bin");
     instance.ReadDatabase();
     ui->tableWidget->setRowCount(instance.GetSize());
     ui->tableWidget->setAttribute(Qt::WA_Disabled,true);
@@ -94,6 +114,11 @@ void AccountInstance::SetLastName(QString src)
 {
     m_LastName = src;
 }
+void QuizDatabase::ShuffleDatabase()
+{
+
+}
+
 void AccountInstance::SetName(QString src)
 {
     m_Name = src;
@@ -142,34 +167,111 @@ int AccountDatabase::GetSize()
 {
     return static_cast<int>(m_database.size());
 }
+void AccountDatabase::WriteDatabase()
+{
+   QFile file(m_Filename);
+   file.open(QIODevice::WriteOnly|QIODevice::Text);
+   QTextStream out(&file);
+   out << Encrypt(m_database.size()) << "\n";
+   for(size_t i=0;i<m_database.size();i++)
+   {
+       out << Encrypt(m_database[i].GetName()) << "\n";
+       out << Encrypt(m_database[i].GetLastName()) << "\n";
+       out << Encrypt(m_database[i].GetGroupName()) << "\n";
+       out << Encrypt(m_database[i].GetScore()) << "\n";
+       out << Encrypt(m_database[i].GetTime()) << "\n";
+   }
+   file.close();
+}
+QString AccountDatabase::Encrypt(int in)
+{
+    QString t_output;
+    byte key[AES::DEFAULT_KEYLENGTH] = EncryptionKey;
+    byte iv[AES::BLOCKSIZE] = EncryptionKey_2;
+    OFB_Mode<AES>::Encryption t_Encrypt;
+    t_Encrypt.SetKeyWithIV(key,sizeof(key),iv);
+    string t_Str,t_strNonHex,t_strCompletelyEncrypted;
+    QString temp;
+    temp.setNum(in);
+    t_Str = temp.toStdString();
+    StringSource(t_Str,true,new StreamTransformationFilter(t_Encrypt,new StringSink(t_strNonHex)));
+    StringSource(t_strNonHex,true,new HexEncoder(new StringSink(t_strCompletelyEncrypted)));
+    t_output = QString::fromStdString(t_strCompletelyEncrypted);
+    return t_output;
+}
+QString AccountDatabase::Encrypt(QString src)
+{
+    QString t_output;
+    byte key[AES::DEFAULT_KEYLENGTH] = EncryptionKey;
+    byte iv[AES::BLOCKSIZE] = EncryptionKey_2;
+    OFB_Mode<AES>::Encryption t_Encrypt;
+    t_Encrypt.SetKeyWithIV(key,sizeof(key),iv);
+    string t_Str,t_strNonHex,t_strCompletelyEncrypted;
+    t_Str = src.toStdString();
+    StringSource(t_Str,true,new StreamTransformationFilter(t_Encrypt,new StringSink(t_strNonHex)));
+    StringSource(t_strNonHex,true,new HexEncoder(new StringSink(t_strCompletelyEncrypted)));
+    t_output = QString::fromStdString(t_strCompletelyEncrypted);
+    return t_output;
+}
+QString AccountDatabase::DecryptToStr(QString &src)
+{
+    QString t_input;
+    byte key[AES::DEFAULT_KEYLENGTH] = EncryptionKey;
+    byte iv[AES::BLOCKSIZE] = EncryptionKey_2;
+    OFB_Mode<AES>::Decryption t_Decrypt;
+    t_Decrypt.SetKeyWithIV(key,sizeof(key),iv);
+    string t_Str,t_strNonHex,t_strCompletelyEncrypted;
+    t_strCompletelyEncrypted = src.toStdString();
+    StringSource(t_strCompletelyEncrypted,true,new HexDecoder(new StringSink(t_strNonHex)));
+    StringSource(t_strNonHex,true,new StreamTransformationFilter(t_Decrypt,new StringSink(t_Str)));
+    t_input = QString::fromStdString(t_Str);
+    return t_input;
+}
+int AccountDatabase::DecryptToInt(QString &src)
+{
+    QString t_input;
+    int lResult;
+    QString temp;
+    byte key[AES::DEFAULT_KEYLENGTH] = EncryptionKey;
+    byte iv[AES::BLOCKSIZE] = EncryptionKey_2;
+    OFB_Mode<AES>::Decryption t_Decrypt;
+    t_Decrypt.SetKeyWithIV(key,sizeof(key),iv);
+    string t_Str,t_strNonHex,t_strCompletelyEncrypted;
+    t_strCompletelyEncrypted = src.toStdString();
+    StringSource(t_strCompletelyEncrypted,true,new HexDecoder(new StringSink(t_strNonHex)));
+    StringSource(t_strNonHex,true,new StreamTransformationFilter(t_Decrypt,new StringSink(t_Str)));
+    t_input = QString::fromStdString(t_Str);
+    lResult = t_input.toInt();
+    return lResult;
+}
 
 void AccountDatabase::ReadDatabase()
 {
     QFile file(m_Filename);
-    file.open(QIODevice::ReadOnly|QIODevice::Text);
-    QTextStream in(&file);
-    QString t_buf;
-    t_buf = in.readLine();
-    int temp = t_buf.toInt();
-    for(int i=0;i<temp;i++)
-    {
-        int t_value;
-        AccountInstance t_instance;
-        t_buf = in.readLine();
-        t_instance.SetName(t_buf);
-        t_buf = in.readLine();
-        t_instance.SetLastName(t_buf);
-        t_buf = in.readLine();
-        t_value = t_buf.toInt();
-        t_instance.SetGroupName(t_value);
-        t_buf = in.readLine();
-        t_value = t_buf.toInt();
-        t_instance.SetScore(t_value);
-        t_buf = in.readLine();
-        t_instance.SetTime(t_buf);
-        Add(t_instance);
-    }
-    file.close();
+   file.open(QIODevice::ReadOnly|QIODevice::Text);
+   QTextStream in(&file);
+   QString t_buf;
+   t_buf = in.readLine();
+   int temp = DecryptToInt(t_buf);
+   for(int i=0;i<temp;i++)
+   {
+       int t_value;
+       AccountInstance t_instance;
+       t_buf = in.readLine();
+       t_instance.SetName(DecryptToStr(t_buf));
+       t_buf = in.readLine();
+       t_instance.SetLastName(DecryptToStr(t_buf));
+       t_buf = in.readLine();
+       t_value = DecryptToInt(t_buf);
+       t_instance.SetGroupName(t_value);
+       t_buf = in.readLine();
+       t_value = DecryptToInt(t_buf);
+       t_instance.SetScore(t_value);
+       t_buf = in.readLine();
+       t_instance.SetTime(DecryptToStr(t_buf));
+       Add(t_instance);
+   }
+   file.close();
 }
 void AccountDatabase::SetFilename(QString src)
 {
@@ -183,22 +285,7 @@ AccountDatabase::AccountDatabase()
 {
 }
 
-void AccountDatabase::WriteDatabase()
-{
-    QFile file(m_Filename);
-    file.open(QIODevice::WriteOnly|QIODevice::Text);
-    QTextStream out(&file);
-    out << m_database.size() << "\n";
-    for(size_t i=0;i<m_database.size();i++)
-    {
-        out << m_database[i].GetName() << "\n";
-        out << m_database[i].GetLastName() << "\n";
-        out << m_database[i].GetGroupName() << "\n";
-        out << m_database[i].GetScore() << "\n";
-        out << m_database[i].GetTime() << "\n";
-    }
-    file.close();
-}
+
 AccountInstance& AccountDatabase::operator [](int index)
 {
     return m_database[index];
@@ -206,12 +293,27 @@ AccountInstance& AccountDatabase::operator [](int index)
 
 void MainWindow::on_lineEdit_textEdited(const QString &arg1)
 {
-    m_Name = arg1;
+    if(arg1.isEmpty()==false)
+    {
+        m_Name = arg1;
+    }
+    else
+    {
+        m_Name = "N/A";
+    }
 }
 
 void MainWindow::on_lineEdit_2_textEdited(const QString &arg1)
 {
-    m_LastName = arg1;
+    if(arg1.isEmpty() == false)
+    {
+       m_LastName = arg1;
+    }
+    else
+    {
+        m_LastName = "N/A";
+    }
+
 }
 
 void MainWindow::on_lineEdit_3_textEdited(const QString &arg1)
@@ -223,18 +325,17 @@ void MainWindow::on_pushButton_4_pressed()
 {
 
 }
-
 void MainWindow::on_pushButton_4_clicked()
-{        AccountInstance t_instance;
-         t_instance.SetName(m_Name);
-         t_instance.SetLastName(m_LastName);
-         t_instance.SetGroupName(m_GroupName);
-         QDateTime curTime;
-         QString _Format = "dd.MM.yyyy hh.mm.ss";
-         QString _curTime;
-         curTime = QDateTime::currentDateTime();
-         _curTime = curTime.toString(_Format);
-         t_instance.SetTime(_curTime);
+{       AccountInstance t_instance;
+        t_instance.SetName(m_Name);
+        t_instance.SetLastName(m_LastName);
+        t_instance.SetGroupName(m_GroupName);
+        QDateTime curTime;
+        QString _Format = "dd.MM.yyyy hh.mm.ss";
+        QString _curTime;
+        curTime = QDateTime::currentDateTime();
+        _curTime = curTime.toString(_Format);
+        t_instance.SetTime(_curTime);
         instance.Add(t_instance);
         ui->radioButton->setVisible(true);
         ui->radioButton_2->setVisible(true);
@@ -254,12 +355,20 @@ void MainWindow::on_pushButton_4_clicked()
         ui->lineEdit_2->setVisible(false);
         ui->lineEdit_3->setVisible(false);
         ui->tableWidget->setVisible(false);
+        if(m_data[m_data.getCurrentId()].getChoosen()==0)
+        {
+            ui->choosen->setText("Вы еще не дали ответа.");
+        }
 
 }
 void MainWindow::Output(QuizEntry obj)
 {
     QString out;
     out.setNum(static_cast<double>(m_data.getCurrentId()+1));
+    if(m_data[m_data.getCurrentId()].getChoosen()==0)
+    {
+        ui->choosen->setText("Вы еще не дали ответа.");
+    }
     ui->num_->setText(out);
     ui->label->setText(obj.getQuestion());
     ui->radioButton->setText(obj.getAnswer1());
@@ -395,6 +504,7 @@ void QuizDatabase::WriteDB()
     }
     file.close();
 }
+
 void QuizDatabase::ReadDB()
 {
     QFile file("c://test.bin");
@@ -461,6 +571,10 @@ void MainWindow::on_pushButton_3_pressed()
     ui->radioButton_4->setAutoExclusive(false);
     ui->radioButton_4->setChecked(false);
     ui->radioButton_4->setAutoExclusive(true);
+    if(m_data[m_data.getCurrentId()].getChoosen()==0)
+    {
+        ui->choosen->setText("Вы еще не дали ответа.");
+    }
     if(m_data[m_data.getCurrentId()].getChoosen()==1)
     {
         ui->radioButton->setChecked(true);
@@ -500,6 +614,10 @@ void MainWindow::on_pushButton_2_pressed()
     ui->radioButton_4->setAutoExclusive(false);
     ui->radioButton_4->setChecked(false);
     ui->radioButton_4->setAutoExclusive(true);
+    if(m_data[m_data.getCurrentId()].getChoosen()==0)
+    {
+        ui->choosen->setText("Вы еще не дали ответа.");
+    }
     if(m_data[m_data.getCurrentId()].getChoosen()==1)
     {
         ui->radioButton->setChecked(true);

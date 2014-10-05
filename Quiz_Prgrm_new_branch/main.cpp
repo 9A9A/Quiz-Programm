@@ -7,6 +7,7 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.m_GroupName = 0;
     w.m_data.setCurrent(0);
+    /*
     QuizEntry m1("Сколько байт в килобайте","1000","1","1024","512",3);
     QuizEntry m2("Сколько герц в гигагерце","1 000 000 000", "1 000 000", "1 000", "0",1);
     QuizEntry m3("Сколько пассажиров в элетричке","300","200","200","N/A",4);
@@ -28,9 +29,9 @@ int main(int argc, char *argv[])
     w.m_data.add(m9);
     w.m_data.add(m10);
 
+   //w.m_data.WriteDB();*/
+    w.m_data.ReadDB();
     w.m_data.ShuffleDatabase();
-   //w.m_data.WriteDB();
-   //w.m_data.ReadDB();
     w.Output(w.m_data.getCurrent());
 
     w.show();

@@ -51,6 +51,10 @@ class QuizDatabase
 public:
     void    WriteDB();
     void    ReadDB();
+    QString    Encrypt(QString);
+    QString    Encrypt(int );
+    QString DecryptToStr(QString &);
+    int     DecryptToInt(QString &);
     QuizEntry getCurrent();
     int     getCurrentId();
     QuizEntry getId(int);
@@ -125,6 +129,7 @@ public:
     void Output(QuizEntry);
     QuizDatabase m_data;
 private slots:
+
     void on_pushButton_pressed();
     void on_pushButton_2_pressed();
     void on_radioButton_toggled(bool checked);
@@ -137,7 +142,11 @@ private slots:
     void on_pushButton_4_pressed();
     void on_pushButton_4_clicked();
     void on_pushButton_3_pressed();
+    void on_action_2_triggered();
+    void on_action_4_triggered();
+
 private:
+    bool m_gbFinished;
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H
